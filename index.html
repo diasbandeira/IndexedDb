@@ -5,8 +5,117 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trabalhando com indexedDb</title>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+           window.indexedDB = window.indexedDB || window.mozIndexedDb || window.webkitIndexedDb || window.msIndexedDb;
+           var request, db;
+           if(!window.indexedDB)
+           {
+                console.log("Navegador não suporta o recurso IndexedDb") ;
+           }else
+           {
+                request = window.indexedDB.open("estudantes", 2);
+                request.onerror = (event) => {
+                    console.log("Erro ao abrir banco de dados", event);
+                }
+
+                request.onupgradeneeded = (event) => {
+                    console.log("Atualizando...");
+                    db = event.target.result;
+                    var objectStore = db.createObjectStore("estudantes", {keyPath: "codigo"});
+                }
+
+                request.onsuccess = (event) => {
+                    console.log("Banco de dados aberto com sucesso");
+                    db = event.target.result;
+                }
+           }
+
+           $("#adicionar").click(() => {
+                var codigo = $("#codigo").val();
+                var nome = $("#nome").val();
+                var transaction = db.transaction(["estudantes"], "readwrite");
+                transaction.oncomplete = (event) => {
+                    console.log("sucess");
+                    $("#result").html("Adicionado com sucesso");
+                }
+                
+                transaction.onerror = (event) =>{
+                    console.log("Erro.");
+                    $("#result").html("Erro ao adicionar");
+                }
+
+                var objectStore = transaction.objectStore("estudantes");
+                objectStore.add(
+                    {
+                        codigo: codigo, 
+                        nome: nome
+                    });
+           });
+
+           $("#excluir").click(() =>{
+                var codigo = $("#codigo").val();
+                var transaction = db.transaction(["estudantes"], "readwrite");
+                transaction.objectStore("estudantes").delete(codigo);
+                transaction.oncomplete = (event) => {
+                    $("#result").html("Item removido");
+                }; 
+           });
+
+           $("#localizar").click(() => {
+                var codigo = $("#codigo").val();
+                var request = db.transaction(["estudantes"], "readwrite").objectStore("estudantes").get(codigo);
+                request.onsuccess = (event) => {
+                    if (request.result == undefined){
+                        $("#result").html("Estudante não localizado");
+                        return;
+                    }
+                    $("#result").html("Nome: " + request.result.nome);
+                };
+           });
+
+           $("#editar").click(() => {
+                var codigo = $("#codigo").val();
+                var nome = $("#nome").val();
+                var transaction = db.transaction(["estudantes"], "readwrite");
+                var objectStore = transaction.objectStore("estudantes");
+                var request = objectStore.get(codigo);
+                request.onsuccess = () =>{
+                    $("#result").html("Atualizando: " + request.result.nome + " para " + nome);
+                    request.result.nome = nome;
+                    objectStore.put(request.result);
+                };
+           });
+           
+        });
+
+    </script>
 </head>
 <body>
-    
+    <table>
+        <form >
+            <tr>
+                <td colspan="3"><strong>Gestão de estudantes no IndexedDb</strong></td>
+            </tr>
+            <tr >
+                <td><label for="codigo">Codigo:</label></td>
+                <td colspan="2"><input type="text" id="codigo" name="codigo"/></td>
+                
+            </tr>
+            <tr>
+                <td><label for="nome">Nome:</label></td>
+                <td colspan="2"><input type="text" id="nome" name="nome"/></td>
+            </tr>
+            <tr>
+                <td><input type="button" id="adicionar" value="Adicionar"></td>
+                <td><input type="button" id="excluir" value="Excluir"></td>
+                <td><input type="button" id="editar" value="Editar"></td>
+                <td><input type="button" id="localizar" value="Localizar"></td>
+
+            </tr>
+        </form>
+    </table>
+    <div id="result"></div>    
 </body>
 </html>
